@@ -97,9 +97,9 @@ your path and complete them in order.
 3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria
 4. **Propose 2-3 approaches** — with trade-offs and your recommendation
 5. **Present design** — in sections scaled to their complexity, get user approval after each section
-6. **Write design doc** — save to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` and commit
-7. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
-8. **User reviews written spec** — ask user to review the spec file before proceeding
+6. **Write design doc** — save to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`; include the Acceptance Criteria table and the For the Plan Author block (see below), then commit
+7. **Spec self-review** — placeholders, contradictions, ambiguity, scope, acceptance integrity (see below)
+8. **User reviews the approval brief** — present the acceptance table + decisions + out-of-scope in chat; the full spec stays at the path for reference
 9. **Transition to implementation** — invoke writing-plans skill to create implementation plan
 
 ## Process Flow
@@ -120,7 +120,7 @@ digraph brainstorming {
     "User approves design?" [shape=diamond];
     "Write design doc" [shape=box];
     "Spec self-review\n(fix inline)" [shape=box];
-    "User reviews spec?" [shape=diamond];
+    "User approves approval brief?" [shape=diamond];
     "Invoke writing-plans skill" [shape=doublecircle];
     "Hidden complexity? Upgrade path" [shape=box];
 
@@ -141,8 +141,8 @@ digraph brainstorming {
     "User approves design?" -> "Write design doc" [label="yes"];
     "Write design doc" -> "Spec self-review\n(fix inline)";
     "Spec self-review\n(fix inline)" -> "User reviews spec?";
-    "User reviews spec?" -> "Write design doc" [label="changes requested"];
-    "User reviews spec?" -> "Invoke writing-plans skill" [label="approved"];
+    "User approves approval brief?" -> "Write design doc" [label="changes requested"];
+    "User approves approval brief?" -> "Invoke writing-plans skill" [label="approved"];
 }
 ```
 
@@ -201,12 +201,42 @@ is the whole process.
 
 ## After the Design (architectural path)
 
+**Spec grill (before you write):** For each acceptance row, ask four questions:
+what exact command proves it, what mutation breaks it, what assumption could
+make it wrong, and what is explicitly out of scope. If a row cannot answer all
+four, it is not ready. Resolve it in conversation now — the plan is not allowed
+to discover it later. The plan's Spec Freeze Gate will refuse a spec with a
+Draft status, a TBD, or an incomplete acceptance row.
+
 **Documentation:**
 
 - Write the validated design (spec) to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
   - (User preferences for spec location override this default)
 - Use elements-of-style:writing-clearly-and-concisely skill if available
 - Commit the design document to git
+
+- **The spec MUST carry two machine-readable sections.** They are what the
+  plan and the execution gate consume; the prose around them is for humans
+  who want depth.
+
+  ```markdown
+  ## Acceptance Criteria
+
+  | ID | Criterion (binary) | Evidence (exact command or observation) | Fails if |
+  |----|--------------------|------------------------------------------|----------|
+  | A1 | ... | pytest tests/x.py::test_y exits 0 | ... |
+
+  ## For the Plan Author
+
+  - Must cover: A1–A5, A7
+  - Do not change: exact thresholds, frozen inputs, output format
+  - Out of scope: what the plan must not build
+  ```
+
+  Rules: IDs are stable (A1..An) and are cited by the plan and the execution
+  gate. Evidence is a runnable command or an exact observation with a path.
+  "Fails if" names the mutation or condition that must make the criterion
+  fail — a criterion without a failure condition is not accepted.
 
 **Spec Self-Review:**
 After writing the spec document, look at it with fresh eyes:
@@ -215,15 +245,28 @@ After writing the spec document, look at it with fresh eyes:
 2. **Internal consistency:** Do any sections contradict each other? Does the architecture match the feature descriptions?
 3. **Scope check:** Is this focused enough for a single implementation plan, or does it need decomposition?
 4. **Ambiguity check:** Could any requirement be interpreted two different ways? If so, pick one and make it explicit.
+5. **Acceptance integrity:** Every acceptance ID has a binary criterion, a runnable evidence command (or exact observation), and a "fails if" condition. No ID is missing, duplicated, or untestable. Every "Must cover" ID in For the Plan Author exists in the table.
 
 Fix any issues inline. No need to re-review — just fix and move on.
 
 **User Review Gate:**
-After the spec review loop passes, ask the user to review the written spec before proceeding:
+After the spec review loop passes, present an **approval brief** in chat — not
+the whole document. The human approves the contract, not the prose:
 
-> "Spec written and committed to `<path>`. Please review it and let me know if you want to make any changes before we start writing out the implementation plan."
+- the Acceptance Criteria table (all rows: ID, criterion, evidence, fails-if)
+- 3–5 decisions that shape the design, each with "cost if wrong"
+- the out-of-scope list
+- one line on what will be verified mechanically (coverage table, negative
+  probes, end-to-end acceptance)
 
-Wait for the user's response. If they request changes, make them and re-run the spec review loop. Only proceed once the user approves.
+Then ask:
+
+> "Approve these acceptance rows and decisions? The full spec is at `<path>` if you want to go deeper; I'll verify the rest mechanically."
+
+Wait for the user's response. If they request changes, make them and re-run the
+spec review loop. Only proceed once the user approves. If the human says
+"approve all" without reading, record that in the spec's status line and rely on
+the mechanical gates — do not claim they reviewed details they did not see.
 
 **Implementation:**
 

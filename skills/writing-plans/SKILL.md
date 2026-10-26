@@ -13,7 +13,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Announce at start:** "I'm using the writing-plans skill to create the implementation plan."
 
-**Context:** If working in an isolated worktree, it should have been created via the `superpowers:using-git-worktrees` skill at execution time.
+**Context:** If working in an isolated worktree, it should have been created via the `using-git-worktrees` skill at execution time.
 
 **Save plans to:** `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
 - (User preferences for plan location override this default)
@@ -22,6 +22,20 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 ## Scope Check
 
 If the spec covers multiple independent subsystems, it should have been broken into sub-project specs during brainstorming. If it wasn't, suggest breaking this into separate plans — one per subsystem. Each plan should produce working, testable software on its own.
+
+## Spec Freeze Gate
+
+Do not write a plan from a moving spec. Before the first task:
+
+- the spec status is Approved (not Draft, not "pending review");
+- its Acceptance Criteria table is complete: every row has an ID, a binary
+  criterion, a runnable evidence command, and a fails-if condition;
+- no TBD, open question, or "to be decided" remains in scope.
+
+Record the spec's sha256 in the plan header. If the spec changes after this
+point, stop: re-open the affected acceptance rows, re-run the Spec Coverage
+table, and re-gate before touching code. A plan written against a moving spec
+is the most expensive defect in this workflow.
 
 ## File Structure
 
@@ -36,12 +50,17 @@ This structure informs the task decomposition. Each task should produce self-con
 
 ## Task Right-Sizing
 
-A task is the smallest unit that carries its own test cycle and is worth a
-fresh reviewer's gate. When drawing task boundaries: fold setup,
-configuration, scaffolding, and documentation steps into the task whose
-deliverable needs them; split only where a reviewer could meaningfully
-reject one task while approving its neighbor. Each task ends with an
+A task is the smallest unit one implementer can complete without needing
+another task's code. Draw boundaries by context, not by technical layer: if
+task B cannot build or pass its tests without task A's output, they are one
+task. Fold setup, configuration, scaffolding, and documentation into the
+task whose deliverable needs them. Each task still ends with an
 independently testable deliverable.
+
+Do not size tasks for a reviewer's gate: the review unit is the batch, not
+the task. A task that is only "small enough to review" but shares an
+interface with its neighbor creates the telephone game this workflow is
+trying to avoid.
 
 ## Bite-Sized Task Granularity
 
@@ -51,6 +70,12 @@ independently testable deliverable.
 - "Implement the minimal code to make the test pass" - step
 - "Run the tests and make sure they pass" - step
 - "Commit" - step
+
+**Type: apply** — the plan already contains the test and the code. Do not
+re-enact RED/GREEN: the plan's test is the RED artifact. Steps are: apply the
+code, run the named test, run the full suite once at the batch boundary, commit.
+
+**Type: build** — keep the five-step RED/GREEN cycle above.
 
 ## Plan Document Header
 
@@ -64,7 +89,7 @@ independently testable deliverable.
 **Last updated:** YYYY-MM-DD
 **Active:** active | archived
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use patched-subagent-driven-development (recommended for build tasks) or executing-plans (apply-heavy or ≤3 tasks) to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** [One sentence describing what this builds]
 
@@ -74,6 +99,7 @@ independently testable deliverable.
 
 **Spec:** [path to the spec/design doc this plan implements — the plan
 argues from the spec, so the spec travels with it; executors read both]
+**Spec hash:** sha256:<hex, 12+ chars>
 
 ## Global Constraints
 
@@ -81,6 +107,27 @@ argues from the spec, so the spec travels with it; executors read both]
 naming and copy rules, platform requirements — one line each, with exact
 values copied verbatim from the spec. Every task's requirements implicitly
 include this section.]
+
+## Spec Coverage
+
+| Spec ID | Task | Evidence (test/probe) |
+|---------|------|-----------------------|
+| A1 | Task 2 | tests/test_x.py::test_y |
+| A2 | Task 2 | tests/test_x.py::test_z (negative probe: delete the token) |
+
+Every acceptance ID from the spec appears exactly once. A task with no
+acceptance ID is allowed only for scaffolding, and must say so. This table
+is what the execution gate verifies; without it the gate has to re-derive
+the matrix from the spec.
+
+## Definition of Done
+
+- Every acceptance ID in scope has PASS evidence.
+- End-to-end: `<command>` runs on `<fixture or stub>` and produces
+  `<artifact>`. Unit tests alone are not completion.
+- The full suite is green once.
+- No open Critical/Important.
+- Human-gated: `<what is deferred>` — the human runs `<command>`.
 
 ---
 ```
@@ -115,11 +162,16 @@ example, defines it in `docs/specs/archive/README.md` and repeats it in
 - Modify: `exact/path/to/existing.py:123-145`
 - Test: `tests/exact/path/to/test.py`
 
+**Type:** <apply | build> — apply: the plan contains the complete code;
+build: only the interfaces, the implementer designs the body.
+
 **Interfaces:**
 - Consumes: [what this task uses from earlier tasks — exact signatures]
 - Produces: [what later tasks rely on — exact function names, parameter
   and return types. A task's implementer sees only their own task; this
   block is how they learn the names and types neighboring tasks use.]
+- Consumer test: [who calls this, with what shape, and what must happen
+  on failure — the interface is not done until a consumer can use it]
 
 - [ ] **Step 1: Write the failing test**
 
@@ -168,30 +220,55 @@ Every step must contain the actual content an engineer needs. These are **plan f
 
 After writing the complete plan, look at the spec with fresh eyes and check the plan against it. This is a checklist you run yourself — not a subagent dispatch.
 
-**1. Spec coverage:** Skim each section/requirement in the spec. Can you point to a task that implements it? List any gaps.
+**1. Coverage table:** Every acceptance ID from the spec appears in the Spec Coverage table, and every row names a task and an evidence test/probe. An unmapped ID, a row without evidence, or a task with no ID (other than declared scaffolding) is a gap. Fix it before handoff.
 
-**2. Placeholder scan:** Search your plan for red flags — any of the patterns from the "No Placeholders" section above. Fix them.
+**2. Negative probes:** For every gate, threshold, or exact-format rule, name the mutation that must make its test fail — delete the guarded token, replace the resampler with a no-op, change the separator, omit the flag. If you cannot name one, the test is decorative: fix the test or the gate.
 
-**3. Type consistency:** Do the types, method signatures, and property names you used in later tasks match what you defined in earlier tasks? A function called `clearLayers()` in Task 3 but `clearFullLayers()` in Task 7 is a bug.
+**3. Placeholder scan:** Search your plan for red flags — any of the patterns from the "No Placeholders" section above. Fix them.
 
-If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
+**4. Type consistency:** Do the types, method signatures, and property names you used in later tasks match what you defined in earlier tasks? A function called `clearLayers()` in Task 3 but `clearFullLayers()` in Task 7 is a bug.
+
+**5. Test budget:** One test per acceptance behaviour. Do not write tests for pure transcription. The full suite runs once at the baseline, once per batch, and once at the final gate — not before every commit.
+
+**6. Definition of Done:** the plan names the end-to-end command and its fixture, not just the tests; and it names anything deferred to the human. A plan that only says "tests pass" is not done.
+
+If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task. If a task contradicts the spec, the spec wins.
+
+## Plan Review
+
+If the plan has more than 3 tasks, or any task carries an acceptance gate,
+dispatch the plan document reviewer before handoff:
+[plan-document-reviewer-prompt.md](plan-document-reviewer-prompt.md), with
+the plan, the spec, and the Spec Coverage table. One pass; fix findings in the
+plan, not in the code. The reviewer returns a status and the acceptance IDs it
+could verify.
+
+Skip this for small plans (≤3 tasks) where the coverage table already accounts
+for every ID.
 
 ## Execution Handoff
 
-After saving the plan, offer execution choice:
+After saving the plan, present a one-page **Execution Brief** in chat:
 
-**"Plan complete and saved to `docs/superpowers/plans/<filename>.md`. Two execution options:**
+- Coverage: A1→Task 1, A2→Task 1, ... (the IDs and where they are proven)
+- Task groups and types: Task 1–3 apply; Task 4–5 build; ...
+- Dispatch plan: inline for apply/≤3 tasks; one implementer per context
+  cluster for build tasks; parallel researchers only for independent work
+- Test budget: baseline 1, per batch 1, final 1
+- Top 3 risks and the stop conditions
 
-**1. Subagent-Driven (recommended)** - I dispatch a fresh subagent per task, review between tasks, fast iteration
+Then ask: "Approve this execution brief? The full plan is at `<path>` for
+reference; I'll verify the rest mechanically."
 
-**2. Inline Execution** - Execute tasks in this session using executing-plans, batch execution with checkpoints
+Choose one execution mode from the brief:
 
-**Which approach?"**
+1. **Inline** — for apply-heavy plans, ≤3 tasks, or tightly coupled work:
+   execute in this session via executing-plans.
+2. **Patched SDD** — for context-separable build work with ≥2 batches:
+   use patched-subagent-driven-development. Default main loop;
+   subagents only for context-separable batches.
+3. **Original SDD** — only when the plan is genuinely task-parallel with
+   disposable context; use subagent-driven-development.
 
-**If Subagent-Driven chosen:**
-- **REQUIRED SUB-SKILL:** Use superpowers:subagent-driven-development
-- Fresh subagent per task + two-stage review
-
-**If Inline Execution chosen:**
-- **REQUIRED SUB-SKILL:** Use superpowers:executing-plans
-- Batch execution with checkpoints for review
+Default to inline for apply-heavy plans. Do not recommend subagent-driven
+execution by reflex: a fresh implementer per task is a cost, not a virtue.

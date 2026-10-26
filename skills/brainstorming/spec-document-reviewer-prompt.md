@@ -23,6 +23,7 @@ Subagent (general-purpose):
     | Clarity | Requirements ambiguous enough to cause someone to build the wrong thing |
     | Scope | Focused enough for a single plan — not covering multiple independent subsystems |
     | YAGNI | Unrequested features, over-engineering |
+    | Acceptance integrity | Every acceptance row has an ID, a binary criterion, a runnable evidence command (or exact observation), and a "fails if" condition; every "Must cover" ID exists in the table; no duplicate IDs |
 
     ## The Seven Elements — a spec is incomplete without all seven
 
@@ -53,11 +54,17 @@ Subagent (general-purpose):
 
     Approve unless there are serious gaps that would lead to a flawed plan.
 
+    **Return the acceptance ID list** (A1..An, in order) in your report. The
+    plan's coverage table and the execution gate cite these IDs, so a missing,
+    duplicate, or untestable ID is an issue, not a recommendation.
+
     ## Output Format
 
     ## Spec Review
 
     **Status:** Approved | Issues Found
+
+    **Acceptance IDs:** A1, A2, ...
 
     **Issues (if any):**
     - [Section X]: [specific issue] - [why it matters for planning]
@@ -66,4 +73,4 @@ Subagent (general-purpose):
     - [suggestions for improvement]
 ```
 
-**Reviewer returns:** Status, Issues (if any), Recommendations
+**Reviewer returns:** Status, Acceptance IDs, Issues (if any), Recommendations
