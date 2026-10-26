@@ -17,6 +17,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Save plans to:** `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
 - (User preferences for plan location override this default)
+- If the project keeps a plan index or documents its own document-metadata convention (for example `docs/plans/README.md`), follow it and record the new plan there.
 
 ## Scope Check
 
@@ -58,6 +59,11 @@ independently testable deliverable.
 ```markdown
 # [Feature Name] Implementation Plan
 
+**Status:** Draft (pending review) | Approved | Archived (YYYY-MM-DD)
+**Created:** YYYY-MM-DD
+**Last updated:** YYYY-MM-DD
+**Active:** active | archived
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** [One sentence describing what this builds]
@@ -78,6 +84,26 @@ include this section.]
 
 ---
 ```
+
+**Document metadata:** the four fields above are the same ones the
+brainstorming step puts on the spec — a plan is a document too, and a plan
+with no status is indistinguishable from a stale one. Fill them with real
+values; never leave the placeholder text in a saved plan:
+
+- **Status** — `Draft (pending review)` while the human still has to approve
+  the plan (or its execution mode); `Approved` once they have;
+  `Archived (YYYY-MM-DD)` when the plan is superseded or fully executed.
+- **Created** / **Last updated** — `YYYY-MM-DD`. Bump `Last updated` on every
+  edit.
+- **Active** — `active`, or `archived` together with an `Archived (YYYY-MM-DD)`
+  status plus a `**Reason:**` line and, if useful, a `**Note:**` line.
+- **Spec** — the path to the spec this plan implements. For bounded work with
+  no spec, write `N/A` and one clause explaining why.
+
+A project that documents its own document-metadata convention overrides this
+block — copy that convention's exact field names and values (pi-ab-sdk, for
+example, defines it in `docs/specs/archive/README.md` and repeats it in
+`docs/plans/README.md`).
 
 ## Task Structure
 

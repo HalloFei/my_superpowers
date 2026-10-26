@@ -24,12 +24,32 @@ Subagent (general-purpose):
     | Scope | Focused enough for a single plan — not covering multiple independent subsystems |
     | YAGNI | Unrequested features, over-engineering |
 
+    ## The Seven Elements — a spec is incomplete without all seven
+
+    A spec can be internally consistent, unambiguous and correctly scoped, and
+    still be unexecutable because it never answered one of these. Check every one
+    and name the ones that are missing:
+
+    | Element | Minimum bar |
+    |---------|-------------|
+    | Goal | One measurable outcome, independently verifiable — not a list of activities |
+    | Context | The current state as fact, each claim traceable to evidence (command / file / run + date); no guess presented as fact |
+    | Boundary | In-Scope and Out-of-Scope both stated explicitly |
+    | Constraint | Every rule judgeable (a reader can say pass/fail), and a stated precedence when two rules conflict |
+    | Acceptance | Binary pass/fail criteria, each naming the evidence that proves it |
+    | Edge cases | Behaviour outside the happy path: inputs, dependencies, state, concurrency |
+    | NFR | Quantified quality baselines (performance, security, observability, …), or an explicit "none apply, because …" |
+
     ## Calibration
 
     **Only flag issues that would cause real problems during implementation planning.**
     A missing section, a contradiction, or a requirement so ambiguous it could be
     interpreted two different ways — those are issues. Minor wording improvements,
     stylistic preferences, and "sections less detailed than others" are not.
+
+    **Any of the seven elements above that is absent — or present but unanswerable —
+    IS an issue.** That is a missing section, not a section "less detailed than
+    others": report it under Issues, never under Recommendations.
 
     Approve unless there are serious gaps that would lead to a flawed plan.
 
